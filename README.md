@@ -1,2 +1,2 @@
 # pdb-handler
-Based ongithub.com/boscoh/pdbremix.git by boscoh
+Based on github.com/boscoh/pdbremix.git by boscoh
