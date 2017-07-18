@@ -16,7 +16,9 @@ def counter(atom, borders, distribution):
                   
 #function to make distribution of number of atoms by ASA values
 # for each element and in total
+
 def elements_asa_distr(soup, borders, mod):
+
 
   H=0
   C=0
@@ -69,6 +71,7 @@ def elements_asa_distr(soup, borders, mod):
     for b in borders:
       distribution[t,b] = 0
   
+
   #calculating the distribution    var H_N  
   if mod == 'H_N':
     for a in soup.atoms():
@@ -127,6 +130,7 @@ def elements_asa_distr(soup, borders, mod):
   else:
     return 'nothing'
                       
+
   #relative distribution
   for t in considered_types:    
     for b in borders:
@@ -186,6 +190,7 @@ def elements_asa_distr(soup, borders, mod):
     plt.show()    
     
   #barchart total 
+
   total = collections.OrderedDict()
   total['=0'] = distribution['t', '=0']
   for b in borders:
@@ -200,12 +205,12 @@ def elements_asa_distr(soup, borders, mod):
   plt.title('distribution of total atoms by ASA')
   for j,i in zip(x,y):
     plt.annotate(i, xy=(j,i), xytext=(-8,1), textcoords='offset points')
+
   plt.xlabel('ASA')
   plt.ylabel('#atoms')
   plt.savefig('total.jpeg')
   plt.show()
   plt.close()
-
 
 start = datetime.now()
 
@@ -220,9 +225,11 @@ pdbtext.clean_pdb(original_pdb+'.pdb', original_pdb+'.clean.pdb')
 soup = pdbatoms.Soup(original_pdb+'.clean.pdb')
 util.goto_dir(str(date.today()))
 
+
 mode = 'H_N'    
 borders = [0, 10, 20, 30, 40, 50]  
 elements_asa_distr(soup, borders, mode)
+
 
 finish = datetime.now()
 print finish - start
