@@ -16,7 +16,9 @@ def counter(atom, borders, distribution):
                   
 #function to make distribution of number of atoms by ASA values
 # for each element and in total
-def elements_asa_distr(soup, borders):
+
+def elements_asa_distr(soup, borders, mod):
+
 
   H=0
   C=0
@@ -69,56 +71,66 @@ def elements_asa_distr(soup, borders):
     for b in borders:
       distribution[t,b] = 0
   
-  #calculating the distribution    
-  for a in soup.atoms():
-    valid_atom_types = [
-            "O",                  
-            "CG2",
-            "ND2",
-            "NH1",
-            "NH2",
-            "NZ",
-            "OD1",
-            "OE1",
-            "OE2",
-            "OG",
-            "OG1",
-            "OH",
-            "SG",
-            "OXT"
-            ]
-    """near_valid_atom_types = [
-            "CG1",
-            "CB",
-            "CD1",
-            "CD2",
-            "CE",
-            "NE2",
-            ]"""     
-    res = a.res_type
-    atom_type = a.type
-    if a.element not in ['S','P']:
-      if atom_type in valid_atom_types:      
+
+  #calculating the distribution    var H_N  
+  if mod == 'H_N':
+    for a in soup.atoms():
+      valid_atom_types = [
+#              "O",                  
+              "CG2",
+              "ND2",
+              "NH1",
+              "NH2",
+              "NZ",
+              "OD1",
+              "OE1",
+              "OE2",
+              "OG",
+              "OG1",
+              "OH",
+              "SG",
+              "OXT"
+              ]
+      """near_valid_atom_types = [
+              "CG1",
+              "CB",
+              "CD1",
+              "CD2",
+              "CE",
+              "NE2",
+              ]"""     
+      res = a.res_type
+      atom_type = a.type
+      if a.element not in ['S','P']:
+        if atom_type in valid_atom_types:      
+          counter(a, borders, distribution)
+        elif atom_type == 'CB':
+          if res == 'ALA':
+            counter(a, borders, distribution)
+        elif atom_type == 'CD1':
+          if res in ['LEU','ILE']:
+            counter(a, borders, distribution)
+        elif atom_type == 'CD2':
+          if res == 'LEU':
+           counter(a, borders, distribution)
+        elif atom_type == 'CE':
+          if res == 'MET':
+            counter(a, borders, distribution)
+        elif atom_type == 'NE2':
+          if res == 'GLN':
+            counter(a, borders, distribution)
+        elif atom_type == 'CG1':
+          if res == 'VAL':
+            counter(a, borders, distribution)
+            
+  elif mod == 'ALL':
+    for a in soup.atoms():      
+      if a.element != 'S':
         counter(a, borders, distribution)
-      elif atom_type == 'CB':
-        if res == 'ALA':
-          counter(a, borders, distribution)
-      elif atom_type == 'CD1':
-        if res in ['LEU','ILE']:
-          counter(a, borders, distribution)
-      elif atom_type == 'CD2':
-        if res == 'LEU':
-         counter(a, borders, distribution)
-      elif atom_type == 'CE':
-        if res == 'MET':
-          counter(a, borders, distribution)
-      elif atom_type == 'NE2':
-        if res == 'GLN':
-          counter(a, borders, distribution)
-      elif atom_type == 'CG1':
-        if res == 'VAL':
-          counter(a, borders, distribution)
-  
+  else:
+    return 'nothing'
+                      
+
   #relative distribution
   for t in considered_types:    
     for b in borders:
@@ -178,22 +190,27 @@ def elements_asa_distr(soup, borders):
     plt.show()    
     
   #barchart total 
-  tr['=0'] = distribution[t, '=0']
+
+  total = collections.OrderedDict()
+  total['=0'] = distribution['t', '=0']
   for b in borders:
-    tr[b] = distribution[t,b]
-  x = range(len(tr.keys()))
-  y = tr.values()
+    total[b] = distribution['t',b]
+  #print ('Distribution of total atoms by ASA in ' +original_pdb)
+  #print tr
+  x = range(len(total.keys()))
+  y = total.values() 
   plt.bar(x,y,align = 'center')
-  plt.xticks(range(len(tr)), xticks)
+  plt.xticks(range(len(total)), xticks)
   plt.suptitle(protein_name+' '+method+' '+original_pdb)
   plt.title('distribution of total atoms by ASA')
   for j,i in zip(x,y):
-    plt.annotate(i, xy=(j,i), xytext=(-10,2), textcoords='offset points')
+    plt.annotate(i, xy=(j,i), xytext=(-8,1), textcoords='offset points')
+
   plt.xlabel('ASA')
   plt.ylabel('#atoms')
   plt.savefig('total.jpeg')
   plt.show()
-
+  plt.close()
 
 start = datetime.now()
 
@@ -207,9 +224,12 @@ original_pdb = 'calcineurin nmr 2jog'
 pdbtext.clean_pdb(original_pdb+'.pdb', original_pdb+'.clean.pdb')
 soup = pdbatoms.Soup(original_pdb+'.clean.pdb')
 util.goto_dir(str(date.today()))
-    
-borders = [0, 12, 21, 23, 50]  
-elements_asa_distr(soup, borders)
+
+
+mode = 'H_N'    
+borders = [0, 10, 20, 30, 40, 50]  
+elements_asa_distr(soup, borders, mode)
+
 
 finish = datetime.now()
 print finish - start
