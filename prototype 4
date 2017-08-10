@@ -10,7 +10,7 @@ def counter(atom, borders, distribution):
     distribution[elem, '=0'] += 1
     distribution['t', '=0'] += 1
   for b in borders:
-    if atom.bfactor > b and atom.bfactor <= (b+10):
+    if atom.bfactor > b and atom.bfactor <= (b+period):
       distribution[elem, b] += 1
       distribution['t', b] += 1
                   
@@ -33,8 +33,13 @@ def calculate_asa(soup):
                                    
 #function to make distribution of number of atoms by ASA values
 # for each element and in total
-def elements_asa_distr(soup, borders, mode):
-
+def elements_asa_distr(soup, mode):
+  
+  borders = []
+  for x in range(51):
+    if x % period == 0:
+      borders.append(x)
+         
   H=0
   C=0
   O=0
@@ -101,30 +106,30 @@ def elements_asa_distr(soup, borders, mode):
       atom_type = a.type
       if a.element not in ['S','P']:
         if atom_type in valid_atom_types:      
-          counter(a, borders, distribution)
+          counter(a, borders,  distribution)
         elif atom_type == 'CB':
           if res == 'ALA':
-            counter(a, borders, distribution)
+            counter(a, borders,  distribution)
         elif atom_type == 'CD1':
           if res in ['LEU','ILE']:
-            counter(a, borders, distribution)
+            counter(a, borders,  distribution)
         elif atom_type == 'CD2':
           if res == 'LEU':
-           counter(a, borders, distribution)
+            counter(a, borders, distribution)
         elif atom_type == 'CE':
           if res == 'MET':
-            counter(a, borders, distribution)
+            counter(a, borders,  distribution)
         elif atom_type == 'NE2':
           if res == 'GLN':
-            counter(a, borders, distribution)
+            counter(a, borders,  distribution)
         elif atom_type == 'CG1':
           if res == 'VAL':
-            counter(a, borders, distribution)
+            counter(a, borders,  distribution)
             
   elif mode == 'ALL':
     for a in soup.atoms():      
       if a.element != 'S':
-        counter(a, borders, distribution)
+        counter(a, borders,  distribution)
   else:
     print ('pick valid mode')
                       
@@ -166,7 +171,7 @@ def elements_asa_distr(soup, borders, mode):
 
   xticks = ['=0']
   for b in borders:
-    xticks.append(str(b)+' to '+str(b+10))
+    xticks.append(str(b)+'-'+str(b+period))
 
   #barchart for elements
   
@@ -182,8 +187,8 @@ def elements_asa_distr(soup, borders, mode):
     for x, d in zip(xticks, distr.values()):
       val_ticks.append(x+'\n'+str(d)) 
     x = range(len(tr.keys()))
-    y = tr.values()
-    plt.bar(x,y,align = 'center')    
+    y = tr.values()    
+    plt.bar(x,y, align = 'center')    
     plt.xticks(range(len(tr)), val_ticks)
     plt.suptitle(protein_name+' '+method+' '+original_pdb)
     plt.title('distribution of '+t+' atoms by ASA')
@@ -219,8 +224,8 @@ def elements_asa_distr(soup, borders, mode):
   
 #>>>>>>>>>>>> enter parameters here <<<<<<<<<<<<<<  
 mode1 = 'H_N'    # 'H_N' or 'ALL'
-mode2 = 'multi' # 'multi' or 'single'
-borders = [0, 10, 20, 30, 40, 50] 
+mode2 = 'single' # 'multi' or 'single'
+period = 10
 #<<<<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>>
 
 start = datetime.now()
@@ -240,10 +245,11 @@ if mode2 == 'single':
   
   #our_soup = pdbatoms.Soup('clean_'+original_pdb+'.pdb')
   #calculate_asa(our_soup) 
-  
+  parent_dir = os.getcwd()
   asa_soup = pdbatoms.Soup('asa_'+original_pdb) 
   util.goto_dir(str(date.today()))
-  elements_asa_distr(asa_soup, borders, mode1)
+  elements_asa_distr(asa_soup, mode1)
+  os.chdir(parent_dir)
   
 if mode2 == 'multi':
   parent_dir = os.getcwd()
@@ -260,7 +266,7 @@ if mode2 == 'multi':
     #calculate_asa(our_soup)     
     asa_soup = pdbatoms.Soup('asa_'+original_pdb)    
     util.goto_dir(str(date.today())) 
-    elements_asa_distr(asa_soup, borders, mode1)
+    elements_asa_distr(asa_soup, mode1)
     print (original_pdb+' done')
     os.chdir(parent_dir)
     finish = datetime.now()
