@@ -1,19 +1,19 @@
-from pdbremix import pdbatoms, util, asa, data, pdbtext
-#from pdbremix import fetch
+from pdbremix import pdbatoms, util, asa, data, pdbtext, fetch
 from datetime import datetime, date 
 import matplotlib.pyplot as plt
 import collections, os, glob, string
 
-def counter(atom, borders, distribution):
+def counter(atom, border_values, distribution):
+  
   elem = atom.element
   if atom.bfactor == 0:
     distribution[elem, '=0'] += 1
     distribution['t', '=0'] += 1
-  for b in borders:
-    if atom.bfactor > b and atom.bfactor <= (b+period):
-      distribution[elem, b] += 1
-      distribution['t', b] += 1
-                  
+  for b in border_values:
+    if atom.bfactor > b and atom.bfactor <= (b+1):
+        distribution[elem, b] += 1
+        distribution['t', b] += 1
+    
 #asa calculation                  
 def calculate_asa(soup):            
   atoms = []
@@ -34,11 +34,16 @@ def calculate_asa(soup):
 #function to make distribution of number of atoms by ASA values
 # for each element and in total
 def elements_asa_distr(soup, mode):
+  max_asa = 0
+  for a in soup.atoms():
+    c = a.bfactor
+    if c > max_asa:
+      max_asa = c
+    
   
-  borders = []
-  for x in range(51):
-    if x % period == 0:
-      borders.append(x)
+  border_values = [x for x in range(100)]
+  #border_values = [x for x in range(int(max_asa)+1)]
+  borders = [x for x in range (int(max_asa)+1) if x % period == 0]
          
   H=0
   C=0
@@ -67,13 +72,11 @@ def elements_asa_distr(soup, mode):
   
   distribution = collections.OrderedDict()
   reldistribution = collections.OrderedDict()
-  types = list(considered_types)
-  types.remove('t')
   
   for t in considered_types:
-    distribution[t,'=0'] = 0 
-    for b in borders:
-      distribution[t,b] = 0
+    distribution[t,'=0'] = 0.0 
+    for b in border_values:
+      distribution[t,b] = 0.0
   
   #calculating the distribution    var H_N  
   if mode == 'H_N':
@@ -106,170 +109,176 @@ def elements_asa_distr(soup, mode):
       atom_type = a.type
       if a.element not in ['S','P']:
         if atom_type in valid_atom_types:      
-          counter(a, borders,  distribution)
+          counter(a, border_values, distribution)
         elif atom_type == 'CB':
           if res == 'ALA':
-            counter(a, borders,  distribution)
+            counter(a,border_values,  distribution)
         elif atom_type == 'CD1':
           if res in ['LEU','ILE']:
-            counter(a, borders,  distribution)
+            counter(a,border_values,  distribution)
         elif atom_type == 'CD2':
           if res == 'LEU':
-            counter(a, borders, distribution)
+            counter(a,border_values,  distribution)
         elif atom_type == 'CE':
           if res == 'MET':
-            counter(a, borders,  distribution)
+            counter(a,border_values,  distribution)
         elif atom_type == 'NE2':
           if res == 'GLN':
-            counter(a, borders,  distribution)
+            counter(a,border_values,  distribution)
         elif atom_type == 'CG1':
           if res == 'VAL':
-            counter(a, borders,  distribution)
+            counter(a,border_values,  distribution)
             
   elif mode == 'ALL':
     for a in soup.atoms():      
       if a.element != 'S':
-        counter(a, borders,  distribution)
+        counter(a,border_values,  distribution)
   else:
     print ('pick valid mode')
                       
   #relative distribution
   for t in considered_types:    
-    for b in borders:
+    for b in border_values:
       try:
         reldistribution[t,b] = round(float(distribution[t,b])/float(distribution['t',b] ),2)
         reldistribution[t,'=0'] = round(float(distribution[t,'=0'])/float(distribution['t','=0']),2)
       except ZeroDivisionError:
-        print ('ZeroDivisionError with '+t+str(b))
-        
-  #result representation #NNEDS FIX
-  total = H + C + O + N + S + P #NNEDS FIX
-#  tC = distribution['C','=0']+distribution['C',0] #NNEDS FIX
-#  tN = distribution['N','=0']+distribution['N',0] #NNEDS FIX
-#  tO = distribution['O','=0']+distribution['O',0] #NNEDS FIX
-#  t = distribution['t','=0']+distribution['t',0] #NNEDS FIX
-  t = sum(distribution.values())
-  result = open('result.txt','w')  
-  for a in distribution:    
-    c = (a,distribution[a],reldistribution[a])
-    #print c
-    b = str(c)+'\n'
-    result.write(b)
-    #NNEDS FIX:
-  result.write('\natoms counted: '+str(total)+' of them with 1 H_N: '+str(t))
-#  result.write('\n'+'H: '+str(H)+'\n')
-#  result.write('C: '+str(C)+' of them with 1 H_N: '+str(tC)+'\n')
-#  result.write('O: '+str(O)+' of them with 1 H_N: '+str(tO)+'\n')
-#  result.write('N: '+str(N)+' of them with 1 H_N: '+str(tN)+'\n')
-#  result.write('S: '+str(S)+'\n')
-#  result.write('P: '+str(P)+'\n')    
-#  result.write('\nProtein name: '+protein_name)
-#  result.write('\nMethod: '+method)
-  result.write('\nPDB name: '+original_pdb)
-  result.close()
+        reldistribution[t,b] = 0.0
+        reldistribution[t,'=0'] = 0.0
+  numbers = distribution.values()
   
+  finaldistr = ['elem ASA # %\n']
+  for k, v in zip(distribution.items(), reldistribution.items()):
+    finaldistr.append(k[0][0]+' '+str(k[0][1])+' '+str(k[1])+' '+str(v[1])+'\n')
+  result = ''.join(finaldistr)
+  #for line in result1.splitlines():
+    #print line
+  with open('result.txt','w') as f:
+    f.write(result) 
+  return numbers       
 
   xticks = ['=0']
   for b in borders:
     xticks.append(str(b)+'-'+str(b+period))
 
   #barchart for elements
-  
-  for t in types:
-    tr = collections.OrderedDict()
-    distr = collections.OrderedDict()
-    val_ticks = []    
-    tr['=0'] = reldistribution[t, '=0']
-    distr['=0'] = distribution[t, '=0']
+  if mode2 == 'single': #временное решение
+    for t in considered_types[:3]:
+      tr = collections.OrderedDict()
+      distr = collections.OrderedDict()
+      val_ticks = []    
+      tr['=0'] = reldistribution[t, '=0']
+      distr['=0'] = distribution[t, '=0']
+      for b in borders[1:]:
+        tr[b] = round(sum(reldistribution[t,b - x] for x in range(period + 1))/period, 2)
+        distr[b] = sum(distribution[t,b - x] for x in range(period + 1))/period
+      for x, d in zip(xticks, distr.values()):
+        val_ticks.append(x+'\n'+str(d)) 
+      x = range(len(tr.keys()))
+      y = tr.values()    
+      plt.bar(x,y, align = 'center')    
+      plt.xticks(range(len(tr)), val_ticks)
+      plt.suptitle(protein_name+' '+method+' '+original_pdb)
+      plt.title('distribution of '+t+' atoms by ASA')
+      for j,i in zip(x,y):
+        plt.annotate(i, xy=(j,i), xytext=(-10,2), textcoords='offset points')
+      plt.xlabel('ASA')
+      plt.ylabel('%')
+      plt.savefig(t+'.jpeg')
+      #plt.show()    
+      plt.close()
+      
+    #barchart total 
+    total = collections.OrderedDict()
+    total['=0'] = distribution['t', '=0']
     for b in borders:
-      tr[b] = reldistribution[t,b]
-      distr[b] = distribution[t,b]
-    for x, d in zip(xticks, distr.values()):
-      val_ticks.append(x+'\n'+str(d)) 
-    x = range(len(tr.keys()))
-    y = tr.values()    
-    plt.bar(x,y, align = 'center')    
-    plt.xticks(range(len(tr)), val_ticks)
+      total[b] = distribution['t',b]
+    #print ('Distribution of total atoms by ASA in ' +original_pdb)
+    #print tr
+    x = range(len(total.keys()))
+    y = total.values() 
+    plt.bar(x,y,align = 'center')
+    plt.xticks(range(len(total)), xticks)
     plt.suptitle(protein_name+' '+method+' '+original_pdb)
-    plt.title('distribution of '+t+' atoms by ASA')
+    plt.title('distribution of total atoms by ASA')
     for j,i in zip(x,y):
-      plt.annotate(i, xy=(j,i), xytext=(-10,2), textcoords='offset points')
+      plt.annotate(i, xy=(j,i), xytext=(-8,1), textcoords='offset points')
     plt.xlabel('ASA')
-    plt.ylabel('%')
-    plt.savefig(t+'.jpeg')
-    #plt.show()    
+    plt.ylabel('#atoms')
+    plt.savefig('total.jpeg')
+    #plt.show()
     plt.close()
     
-  #barchart total 
-  total = collections.OrderedDict()
-  total['=0'] = distribution['t', '=0']
-  for b in borders:
-    total[b] = distribution['t',b]
-  #print ('Distribution of total atoms by ASA in ' +original_pdb)
-  #print tr
-  x = range(len(total.keys()))
-  y = total.values() 
-  plt.bar(x,y,align = 'center')
-  plt.xticks(range(len(total)), xticks)
-  plt.suptitle(protein_name+' '+method+' '+original_pdb)
-  plt.title('distribution of total atoms by ASA')
-  for j,i in zip(x,y):
-    plt.annotate(i, xy=(j,i), xytext=(-8,1), textcoords='offset points')
-  plt.xlabel('ASA')
-  plt.ylabel('#atoms')
-  plt.savefig('total.jpeg')
-  #plt.show()
-  plt.close()
-  
   
 #>>>>>>>>>>>> enter parameters here <<<<<<<<<<<<<<  
 mode1 = 'H_N'    # 'H_N' or 'ALL'
-mode2 = 'single' # 'multi' or 'single'
+mode2 = 'multi' # 'multi' or 'single'
 period = 10
 #<<<<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>>
 
 start = datetime.now()
 util.goto_dir('results')
-#fetch.get_pdbs_with_http('1btv') #To download pdb directly from web
+#fetch.get_pdbs_with_http('1be9') #To download pdb directly from web
 
 if mode2 == 'single':
   # >>>>>>>>>>>> choose pdb here <<<<<<<<<<<<<<
   protein_name = 'test'
   method = 'test'
-  original_pdb = 'calcineurin nmr 2jog.pdb'  
+  original_pdb = '3bt6.pdb'  
   #<<<<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>>
     
   #    DISABLE/ENABLE BELOW FUNCTIONS IF YOU NEED
   #-------------------------------------------------
-  #pdbtext.clean_pdb(original_pdb+'.pdb', 'clean_'+original_pdb+'.pdb') 
+  #pdbtext.clean_pdb(original_pdb, 'clean_'+original_pdb) 
   
-  #our_soup = pdbatoms.Soup('clean_'+original_pdb+'.pdb')
+  #our_soup = pdbatoms.Soup('clean_'+original_pdb)
   #calculate_asa(our_soup) 
   parent_dir = os.getcwd()
   asa_soup = pdbatoms.Soup('asa_'+original_pdb) 
   util.goto_dir(str(date.today()))
   elements_asa_distr(asa_soup, mode1)
   os.chdir(parent_dir)
-  
+  finish = datetime.now()
+  print finish - start  
+   
 if mode2 == 'multi':
   parent_dir = os.getcwd()
 #  for file in glob.glob('*.pdb'):
 #    if 'clean_' not in file:
 #      clean_pdb = ('clean_'+file)
 #      pdbtext.clean_pdb(file, clean_pdb)
-      
+  
+  distr = ['elem ASA '] 
+  ordereddict = collections.OrderedDict()
+  for t in ['O', 'N', 'C', 't']:
+    ordereddict[t, '=0'] = ''
+    for b in [x for x in range(100)]:
+      ordereddict[t, b] = ''
+  
+  for k in ordereddict.keys():
+    distr.append('\n'+k[0]+' '+str(k[1]))  
+  
   for file in glob.glob('clean_*'):
     protein_name = ''
-    method = ''    
+    method = ''
     original_pdb = string.replace(file, 'clean_', '')
     #our_soup = pdbatoms.Soup(file)    
     #calculate_asa(our_soup)     
     asa_soup = pdbatoms.Soup('asa_'+original_pdb)    
-    util.goto_dir(str(date.today())) 
-    elements_asa_distr(asa_soup, mode1)
+    util.goto_dir(str(date.today()))
+    numbers = [str(original_pdb)+' ']    
+    num_results = elements_asa_distr(asa_soup, mode1)
+    for i in num_results:
+      numbers.append(' '+str(i))
+    for l in distr:
+      a = distr.index(l)
+      distr[a] += str(numbers[a])
     print (original_pdb+' done')
     os.chdir(parent_dir)
     finish = datetime.now()
     print finish - start  
-      
+  
+  summary = ''.join(distr)   
+  with open('summarized.txt','w') as f:
+    f.write(summary)
 print 'job done!'  
